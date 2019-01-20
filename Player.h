@@ -1,4 +1,5 @@
 #include <armadillo>
+#include "Enums.h"
 
 class Player
 {
@@ -24,8 +25,12 @@ class Player
         void TurnRight();
         void TurnLeft();
 
+        void StrafeRight();
+        void StrafeLeft();
+
         void MoveForward();
         void MoveBackward();
 
         arma::vec GetFrontXYPos();
+        arma::vec GetMovePos(MoveType direction);
 };

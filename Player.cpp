@@ -47,6 +47,28 @@ void Player::TurnLeft()
     this->heading -= this->turnSpeed;
 }
 
+void Player::StrafeLeft()
+{
+    double pi = 3.141592653589793238463;
+    double newHeading = this->heading - pi / 2;
+    double dx = this->moveSpeed * cos(newHeading);
+    double dy = this->moveSpeed * sin(newHeading);
+
+    this->XYPosition(0) += dx;
+    this->XYPosition(1) += dy;
+}
+
+void Player::StrafeRight()
+{
+    double pi = 3.141592653589793238463;
+    double newHeading = this->heading + pi / 2;
+    double dx = this->moveSpeed * cos(newHeading);
+    double dy = this->moveSpeed * sin(newHeading);
+
+    this->XYPosition(0) += dx;
+    this->XYPosition(1) += dy;
+}
+
 void Player::MoveForward()
 {
     double dx = this->moveSpeed * cos(this->heading);
@@ -58,13 +80,14 @@ void Player::MoveForward()
 
 void Player::MoveBackward()
 {
+    double pi = 3.141592653589793238463;
+    double newHeading = this->heading + pi;
     double dx = this->moveSpeed * cos(this->heading);
     double dy = this->moveSpeed * sin(this->heading);
 
     this->XYPosition(0) -= dx;
     this->XYPosition(1) -= dy;
 }
-
 
 arma::vec Player::GetFrontXYPos()
 {
@@ -75,4 +98,56 @@ arma::vec Player::GetFrontXYPos()
     double y = this->XYPosition(1) + dy;
     arma::vec frontXYPos = {x, y};
     return frontXYPos;
+}
+
+arma::vec Player::GetMovePos(MoveType direction)
+{
+    arma::vec movePos;
+    double dx, dy, x, y;
+    double newHeading;
+    double pi = 3.141592653589793238463;
+
+    switch (direction)
+    {
+        case MoveType::FORWARD:
+            dx = this->moveSpeed * cos(this->heading);
+            dy = this->moveSpeed * sin(this->heading);
+
+            x = this->XYPosition(0) + dx;
+            y = this->XYPosition(1) + dy;
+            movePos = {x, y};
+            break;
+
+        case MoveType::BACKWARD:
+            newHeading = this->heading + pi;
+            dx = this->moveSpeed * cos(newHeading);
+            dy = this->moveSpeed * sin(newHeading);
+
+            x = this->XYPosition(0) + dx;
+            y = this->XYPosition(1) + dy;
+            movePos = {x, y};
+            break;
+
+        case MoveType::STRAFE_LEFT:
+            newHeading = this->heading - pi / 2;
+            dx = this->moveSpeed * cos(newHeading);
+            dy = this->moveSpeed * sin(newHeading);
+
+            x = this->XYPosition(0) + dx;
+            y = this->XYPosition(1) + dy;
+            movePos = {x, y};
+            break;
+
+        case MoveType::STRAFE_RIGHT:
+            newHeading = this->heading + pi / 2;
+            dx = this->moveSpeed * cos(newHeading);
+            dy = this->moveSpeed * sin(newHeading);
+
+            x = this->XYPosition(0) + dx;
+            y = this->XYPosition(1) + dy;
+            movePos = {x, y};
+            break;
+    }
+
+    return movePos;
 }

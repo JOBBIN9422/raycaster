@@ -3,7 +3,8 @@
 using namespace std;
 
 Raycaster::Raycaster(int windowWidth, int windowHeight) 
-: windowWidth(windowWidth), windowHeight(windowHeight), focalLength(0.5), targetFPS(60.0), done(false)
+: windowWidth(windowWidth), windowHeight(windowHeight), focalLength(0.5), targetFPS(60.0), done(false),
+moveForward(false), moveBackward(false), turnLeft(false), turnRight(false), strafeLeft(false), strafeRight(false)
 {
     this->player = new Player(30, 20);
     this->map = new Map(40, 40);
@@ -84,6 +85,7 @@ void Raycaster::RunGameLoop()
 //draw vertical stripes (to be rendered)
 void Raycaster::CastRays()
 {
+    this->DrawFloorAndCeiling(0x74e8e4, 0x78205);
     //loop over each column of the display
     for (int x = 0; x < this->windowWidth; x++)
     {
@@ -247,6 +249,38 @@ void Raycaster::CastRays()
     }
 }
 
+void Raycaster::DrawFloorAndCeiling(unsigned int ceilingColor, unsigned int floorColor)
+{
+    //define bounds for ceiling color
+    SDL_Rect ceilingRect;
+    ceilingRect.x = 0;
+    ceilingRect.y = 0;
+    ceilingRect.w = this->windowWidth;
+    ceilingRect.h = this->windowHeight / 2;
+
+    //extract ceiling color
+    int R = (ceilingColor >> 16) & 0xFF;
+    int G = (ceilingColor >> 8) & 0xFF;
+    int B = ceilingColor & 0xFF;
+
+    //draw the ceiling
+    SDL_SetRenderDrawColor(this->renderer, R, G, B, SDL_ALPHA_OPAQUE);
+    SDL_RenderFillRect(this->renderer, &ceilingRect);
+
+    R = (floorColor >> 16) & 0xFF;
+    G = (floorColor >> 8) & 0xFF;
+    B = floorColor & 0xFF;
+
+    SDL_Rect floorRect;
+    floorRect.x = 0;
+    floorRect.y = this->windowHeight / 2;
+    floorRect.w = this->windowWidth;
+    floorRect.h = this->windowHeight / 2;
+
+    SDL_SetRenderDrawColor(this->renderer, R, G, B, SDL_ALPHA_OPAQUE);
+    SDL_RenderFillRect(this->renderer, &floorRect);
+}
+
 //do rendering and game updates at ~60fps
 void Raycaster::DoUpdates()
 {
@@ -298,10 +332,59 @@ void Raycaster::DrawVertLine(int x, int yStart, int yEnd, unsigned int color)
     SDL_RenderDrawLine(this->renderer, x, yStart, x, yEnd);
 }
 
+void Raycaster::PlayerMove(MoveType move)
+{
+    arma::vec moveCoords;
+    switch (move)
+    {
+        case MoveType::FORWARD:
+            moveCoords = this->player->GetMovePos(MoveType::FORWARD);
+            if (this->map->GetMap().at((int)moveCoords(1)).at((int)moveCoords(0)).GetType()
+                != TileType::WALL)
+            {
+                this->player->MoveForward();
+            }
+            break;
+
+        case MoveType::BACKWARD:
+            moveCoords = this->player->GetMovePos(MoveType::BACKWARD);
+            if (this->map->GetMap().at((int)moveCoords(1)).at((int)moveCoords(0)).GetType()
+                != TileType::WALL)
+            {
+                this->player->MoveBackward();
+            }
+            break;
+
+        case MoveType::TURN_LEFT:
+            this->player->TurnLeft();
+            break;
+
+        case MoveType::TURN_RIGHT:
+            this->player->TurnRight();
+            break;
+
+        case MoveType::STRAFE_LEFT:
+            moveCoords = this->player->GetMovePos(MoveType::STRAFE_LEFT);
+            if (this->map->GetMap().at((int)moveCoords(1)).at((int)moveCoords(0)).GetType()
+                != TileType::WALL)
+            {
+                this->player->StrafeLeft();
+            }
+            break;
+
+        case MoveType::STRAFE_RIGHT:
+            moveCoords = this->player->GetMovePos(MoveType::STRAFE_RIGHT);
+            if (this->map->GetMap().at((int)moveCoords(1)).at((int)moveCoords(0)).GetType()
+                != TileType::WALL)
+            {
+                this->player->StrafeRight();
+            }
+            break;
+    }
+}
+
 void Raycaster::HandleEvents()
 {
-    arma::vec moveCoords = this->player->GetFrontXYPos();
-
     SDL_PollEvent(&event);
     switch (event.type)
     {
@@ -310,48 +393,88 @@ void Raycaster::HandleEvents()
             this->Cleanup();
             break;
 
-        case SDL_KEYDOWN:
+        case SDL_KEYUP:
             switch (event.key.keysym.sym)
             {
-                case SDLK_RIGHT: 
-                    this->player->TurnRight();
+                case SDLK_LEFT:
+                    this->turnLeft = false;
                     break;
 
-                case SDLK_LEFT: 
-                    this->player->TurnLeft();
+                case SDLK_RIGHT:
+                    this->turnRight = false;
                     break;
 
-                case SDLK_UP: 
-                    if (this->map->GetMap().at((int)moveCoords(1)).at((int)moveCoords(0)).GetType()
-                        != TileType::WALL)
-                    {
-                        this->player->MoveForward();
-                    }
+                case SDLK_w:
+                    this->moveForward = false;
                     break;
 
-                case SDLK_DOWN: 
-                    this->player->MoveBackward();
+                case SDLK_s:
+                    this->moveBackward = false;
                     break;
 
-                case SDLK_SPACE: 
+                case SDLK_a:
+                    this->strafeLeft = false;
                     break;
 
-                case SDLK_RETURN: 
-                    break;
-
-                case SDLK_RSHIFT: 
-                    break;
-
-                case SDLK_TAB: 
-                    break;
-
-                case SDLK_ESCAPE: 
-                    this->done = true;
-                    this->Cleanup();
-                    SDL_Quit();
+                case SDLK_d:
+                    this->strafeRight = false;
                     break;
             }
             break;
+
+        case SDL_KEYDOWN:
+            switch (event.key.keysym.sym)
+            {
+                case SDLK_LEFT:
+                    this->turnLeft = true;
+                    break;
+
+                case SDLK_RIGHT:
+                    this->turnRight = true;
+                    break;
+
+                case SDLK_w:
+                    this->moveForward = true;
+                    break;
+
+                case SDLK_s:
+                    this->moveBackward = true;
+                    break;
+
+                case SDLK_a:
+                    this->strafeLeft = true;
+                    break;
+
+                case SDLK_d:
+                    this->strafeRight = true;
+                    break;
+            }
+            break;
+    }
+
+    if (this->moveForward)
+    {
+        this->PlayerMove(MoveType::FORWARD);
+    }
+    if (this->moveBackward)
+    {
+        this->PlayerMove(MoveType::BACKWARD);
+    }
+    if (this->turnLeft)
+    {
+        this->PlayerMove(MoveType::TURN_LEFT);
+    }
+    if (this->turnRight)
+    {
+        this->PlayerMove(MoveType::TURN_RIGHT);
+    }
+    if (this->strafeLeft)
+    {
+        this->PlayerMove(MoveType::STRAFE_LEFT);
+    }
+    if (this->strafeRight)
+    {
+        this->PlayerMove(MoveType::STRAFE_RIGHT);
     }
 }
 

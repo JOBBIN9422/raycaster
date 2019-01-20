@@ -1,11 +1,5 @@
 #include <string>
-
-enum TileType
-{
-    WALL,
-    DOOR,
-    FLOOR
-};
+#include "Enums.h"
 
 class Tile
 {

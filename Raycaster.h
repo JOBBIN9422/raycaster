@@ -5,6 +5,7 @@
 #include <cmath>
 #include "Player.h"
 #include "Map.h"
+#include "Enums.h"
 
 class Raycaster
 {
@@ -35,7 +36,14 @@ class Raycaster
         double currFrameTime;
         double elapsedFrameTime;
 
+        //game state info
         bool done;
+        bool strafeLeft;
+        bool strafeRight;
+        bool turnLeft;
+        bool turnRight;
+        bool moveForward;
+        bool moveBackward;
 
     public:
         Raycaster(int windowWidth, int windowHeight);
@@ -44,12 +52,15 @@ class Raycaster
         void CastRays();
         void RenderFrame();
         void DrawVertLine(int x, int yStart, int yEnd, unsigned int color);
+        void DrawFloorAndCeiling(unsigned int ceilingColor, unsigned int floorColor);
         void HandleEvents();
         void Cleanup();
         void RunGameLoop();
         void DebugPrint();
         void DoUpdates();
         void LoadTextures();
+
+        void PlayerMove(MoveType move);
 
         bool IsDoneRendering();
 
