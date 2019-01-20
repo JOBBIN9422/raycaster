@@ -203,11 +203,11 @@ void Raycaster::CastRays()
         double wallXCoord;
         if (!hitYSide) 
         {
-            wallXCoord = rayOrigin(1) + perpendicularDist * rayHeadingY;
+            wallXCoord = rayOrigin(1) + perpendicularDist * rayHeadingY / cos(rayAngleOffset);
         }
         else
         {
-            wallXCoord = rayOrigin(0) + perpendicularDist * rayHeadingX;
+            wallXCoord = rayOrigin(0) + perpendicularDist * rayHeadingX / cos(rayAngleOffset);
         }
         wallXCoord -= floor(wallXCoord);
 
@@ -296,7 +296,7 @@ void Raycaster::DoUpdates()
     
 
     //set speed modifiers
-    this->player->SetMoveSpeed(delta / 20.0);
+    this->player->SetMoveSpeed(delta / 10.0);
     this->player->SetTurnSpeed(delta / 20.0);
 
     this->RenderFrame();
