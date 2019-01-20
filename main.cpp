@@ -6,8 +6,6 @@ using namespace std;
 int main()
 {
     Raycaster raycaster(1024, 768);
-    while (true)
-    {
-        raycaster.RunFrame();
-    }
+    raycaster.RunGameLoop();
+    return 0;
 }

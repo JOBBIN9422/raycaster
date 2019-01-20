@@ -2,7 +2,8 @@
 
 using namespace std;
 
-Tile::Tile(TileType type, unsigned int color, string wallTextureFile) : type(type), color(color)
+Tile::Tile(TileType type, unsigned int color, string wallTextureFile) : type(type), color(color),
+wallTextureFilename(wallTextureFile)
 {
 }
 

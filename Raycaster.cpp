@@ -3,11 +3,12 @@
 using namespace std;
 
 Raycaster::Raycaster(int windowWidth, int windowHeight) 
-: windowWidth(windowWidth), windowHeight(windowHeight), focalLength(0.5)
+: windowWidth(windowWidth), windowHeight(windowHeight), focalLength(0.5), targetFPS(60.0), done(false)
 {
-    this->player = new Player(10, 1);
-    this->map = new Map(20, 4);
+    this->player = new Player(30, 20);
+    this->map = new Map(40, 40);
     this->InitVideo(windowWidth, windowHeight);
+    this->LoadTextures();
 }
 
 void Raycaster::InitVideo(int windowWidth, int windowHeight)
@@ -15,16 +16,74 @@ void Raycaster::InitVideo(int windowWidth, int windowHeight)
     this->mainWindow = SDL_CreateWindow("Test", SDL_WINDOWPOS_UNDEFINED, 
                                         SDL_WINDOWPOS_UNDEFINED, windowWidth, windowHeight, 
                                         SDL_WINDOW_SHOWN);
-    this->renderer = SDL_CreateRenderer(mainWindow, -1, SDL_RENDERER_ACCELERATED);
-    this->windowTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
-                                            SDL_TEXTUREACCESS_STATIC, windowWidth, windowHeight);
-    this->frameBuffer = new unsigned int[windowWidth * windowHeight];
+    this->renderer = SDL_CreateRenderer(mainWindow, -1, SDL_RENDERER_ACCELERATED |
+                                                        SDL_RENDERER_PRESENTVSYNC);
+    //this->windowTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
+                                            //SDL_TEXTUREACCESS_STATIC, windowWidth, windowHeight);
 }
 
-void Raycaster::RunFrame()
+void Raycaster::LoadTextures()
 {
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-    SDL_RenderClear(renderer);
+    vector<vector<Tile>> worldMap = this->map->GetMap();
+    for (int y = 0; y < worldMap.size(); y++)
+    {
+        for (int x = 0; x < worldMap.at(y).size(); x++)
+        {
+            //get filename and search the texture map for it
+            string filename = worldMap.at(y).at(x).GetWallTextureFilename();
+            unordered_map<string, SDL_Texture*>::const_iterator searchIter = 
+            this->textureMap.find(filename);
+
+            //if current tile has associated filename AND the same texture has not already been loaded
+            if (filename != "" && searchIter == this->textureMap.end())
+            {
+                SDL_Texture* currTexture = this->LoadTexture(filename);
+                //trim off path from filename (probably shouldn't hard-code this)
+                this->textureMap.insert(make_pair(filename, currTexture));
+            }
+        }
+    }
+}
+
+SDL_Texture* Raycaster::LoadTexture(std::string filename)
+{
+    SDL_Surface* tempSurface = IMG_Load(filename.c_str());
+    if (!tempSurface)
+    {
+        cout << "Error loading " << filename << ": " << IMG_GetError() << "\n";
+        return nullptr;
+    }
+
+    //if image loaded successfully
+    SDL_Texture* loadedTexture = SDL_CreateTextureFromSurface(this->renderer, tempSurface);
+    if (!loadedTexture)
+    {
+        cout << "Error creating texture from " << filename << ": " << SDL_GetError() << "\n";
+        return nullptr;
+    }
+
+    SDL_FreeSurface(tempSurface);
+    return loadedTexture;
+}
+
+bool Raycaster::IsDoneRendering()
+{
+    return this->done;
+}
+
+void Raycaster::RunGameLoop()
+{
+    while (!this->done)
+    {
+        this->CastRays();
+        this->DoUpdates();
+    }
+}
+
+//perform raycasting for each vertical column of the screen
+//draw vertical stripes (to be rendered)
+void Raycaster::CastRays()
+{
     //loop over each column of the display
     for (int x = 0; x < this->windowWidth; x++)
     {
@@ -116,45 +175,115 @@ void Raycaster::RunFrame()
         int lineStart = -lineSize / 2 + this->windowHeight / 2;
         int lineEnd   = lineSize / 2 + this->windowHeight / 2;
 
-        if (lineStart < 0)
-        {
-            lineStart = 0;
-        }
+        //if (lineStart < 0)
+        //{
+        //    lineStart = 0;
+        //}
 
-        if (lineEnd >= this->windowHeight)
-        {
-            lineEnd = this->windowHeight - 1;
-        }
+        //if (lineEnd >= this->windowHeight)
+        //{
+        //    lineEnd = this->windowHeight - 1;
+        //}
 
         //draw line with wall color
-        unsigned int color = currTile.GetColor();
-        if (hitYSide)
+        //unsigned int color = currTile.GetColor();
+        //if (hitYSide)
+        //{
+        //    unsigned char newR = ((color >> 16) & 0xFF) * 3 / 4;
+        //    unsigned char newG = ((color >> 8) & 0xFF) * 3 / 4;
+        //    unsigned char newB = (color & 0xFF) * 3 / 4;
+        //    color = 0xFF000000 | (newR << 16) | (newG << 8) | newB;
+        //}
+
+        //this->DrawVertLine(x, lineStart, lineEnd, color);
+
+        //texture indexing
+        double wallXCoord;
+        if (!hitYSide) 
         {
-            unsigned char newR = ((color >> 16) & 0xFF) * 3 / 4;
-            unsigned char newG = ((color >> 8) & 0xFF) * 3 / 4;
-            unsigned char newB = (color & 0xFF) * 3 / 4;
-            color = 0xFF000000 | (newR << 16) | (newG << 8) | newB;
+            wallXCoord = rayOrigin(1) + perpendicularDist * rayHeadingY;
         }
+        else
+        {
+            wallXCoord = rayOrigin(0) + perpendicularDist * rayHeadingX;
+        }
+        wallXCoord -= floor(wallXCoord);
 
-        this->DrawVertLine(x, lineStart, lineEnd, color);
+        //get the texture of the intersected wall and its dimensions
+        SDL_Texture* wallTexture = this->textureMap[currTile.GetWallTextureFilename()];
+        int wallTextureWidth, wallTextureHeight;
+        SDL_QueryTexture(wallTexture, nullptr, nullptr, &wallTextureWidth, &wallTextureHeight);
+
+        //map the wall coordinate to the x coordinate to be drawn of the texture
+        int textureXCoord = int(wallXCoord * double(wallTextureWidth));
+
+        //reverse coordinate direction based on ray heading
+        //if (!hitYSide && rayHeadingX > 0)
+        //{
+        //    textureXCoord = wallTextureWidth - textureXCoord - 1;
+        //}
+        //if (hitYSide && rayHeadingY < 0)
+        //{
+        //    textureXCoord = wallTextureWidth - textureXCoord - 1;
+        //}
+        
+        //draw the texture slice in the appropriate location on screen
+        SDL_Rect textureSource;
+        SDL_Rect textureDest;
+
+        //pull the appropriate strip from the wall texture
+        textureSource.x = textureXCoord;
+        textureSource.y = 0;
+        textureSource.w = 1;
+        textureSource.h = wallTextureHeight;
+
+        //the destination (location drawn on screen)
+        textureDest.x = x;
+        textureDest.y = lineStart;
+        textureDest.w = 1;
+        textureDest.h = lineSize;
+        
+        SDL_RenderCopy(this->renderer, wallTexture, &textureSource, &textureDest);
     }
+}
 
+//do rendering and game updates at ~60fps
+void Raycaster::DoUpdates()
+{
+    //frame timing
     this->prevFrameTime = this->currFrameTime;
     this->currFrameTime = SDL_GetTicks();
-    this->elapsedFrameTime = (this->currFrameTime - this->prevFrameTime) / 1000;
-    this->RenderFrame();
+
+    //elapsed frame time in milliseconds
+    this->elapsedFrameTime = (this->currFrameTime - this->prevFrameTime);
+    this->FPS = 1000.0 / (double)this->elapsedFrameTime;
+    double optimalFrameTime = 1000.0 / this->targetFPS;    
+    double delta = this->elapsedFrameTime / optimalFrameTime;
+    
 
     //set speed modifiers
-    this->player->SetMoveSpeed(this->elapsedFrameTime * 5.0);
-    this->player->SetTurnSpeed(this->elapsedFrameTime * 3.0);
+    this->player->SetMoveSpeed(delta / 20.0);
+    this->player->SetTurnSpeed(delta / 20.0);
 
-    this->PollKeyboard();
+    this->RenderFrame();
+    this->HandleEvents();
+
+    //update FPS counter every ~1 second
+    if (this->currFrameTime - this->lastFPSUpdate > 1000.0)
+    {
+        SDL_SetWindowTitle(this->mainWindow, to_string(FPS).c_str());
+        this->lastFPSUpdate = this->currFrameTime;
+    }
+
+    //limit FPS if we're going 2 fast
+    if (this->elapsedFrameTime < optimalFrameTime)
+    {
+        SDL_Delay(optimalFrameTime - this->elapsedFrameTime);
+    }
 }
 
 void Raycaster::RenderFrame()
 {
-    //SDL_UpdateTexture(windowTexture, NULL, frameBuffer, this->windowWidth * sizeof(uint));
-    //SDL_RenderCopy(renderer, windowTexture, NULL, NULL);
     SDL_RenderPresent(renderer);
     SDL_RenderClear(renderer);
 }
@@ -169,15 +298,20 @@ void Raycaster::DrawVertLine(int x, int yStart, int yEnd, unsigned int color)
     SDL_RenderDrawLine(this->renderer, x, yStart, x, yEnd);
 }
 
-void Raycaster::PollKeyboard()
+void Raycaster::HandleEvents()
 {
     arma::vec moveCoords = this->player->GetFrontXYPos();
 
-    SDL_PollEvent(&keyEvent);
-    switch (keyEvent.type)
+    SDL_PollEvent(&event);
+    switch (event.type)
     {
+        case SDL_QUIT:
+            this->done = true;
+            this->Cleanup();
+            break;
+
         case SDL_KEYDOWN:
-            switch (keyEvent.key.keysym.sym)
+            switch (event.key.keysym.sym)
             {
                 case SDLK_RIGHT: 
                     this->player->TurnRight();
@@ -212,6 +346,8 @@ void Raycaster::PollKeyboard()
                     break;
 
                 case SDLK_ESCAPE: 
+                    this->done = true;
+                    this->Cleanup();
                     SDL_Quit();
                     break;
             }
@@ -223,4 +359,10 @@ void Raycaster::DebugPrint()
 {
     cout << "player pos:\n " << this->player->GetXYPosition() << "\n";
     cout << "player heading: " << this->player->GetHeading() * 180 / 3.1415 << "\n" << "\n";
+}
+
+void Raycaster::Cleanup()
+{
+    SDL_DestroyWindow(this->mainWindow);
+    SDL_DestroyRenderer(this->renderer);
 }

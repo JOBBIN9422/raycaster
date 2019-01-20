@@ -1,6 +1,6 @@
 CC=g++
 CFLAGS=-std=c++14 -g
-LDFLAGS=-larmadillo -lSDL2
+LDFLAGS=-larmadillo -lSDL2 -lSDL2_image
 
 SOURCES=main.cpp Map.cpp Tile.cpp Player.cpp Raycaster.cpp
 OBJECTS=$(SOURCES:.cpp=.o)

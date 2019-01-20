@@ -9,18 +9,18 @@ Map::Map(int mapWidth, int mapHeight) : worldMap(mapHeight, vector<Tile>(mapWidt
     for (int x = 0; x < mapWidth; x++)
     {
         //define walls as white tiles
-        this->worldMap.at(0).at(x) = Tile(TileType::WALL, wallColor);
-        this->worldMap.at(mapHeight - 1).at(x) = Tile(TileType::WALL, wallColor);
+        this->worldMap.at(0).at(x) = Tile(TileType::WALL, wallColor, "textures/greystone.png");
+        this->worldMap.at(mapHeight - 1).at(x) = Tile(TileType::WALL, wallColor, "textures/greystone.png");
     }
 
     //add left and right perimeter walls
     for (int y = 0; y < mapHeight; y++)
     {
-        this->worldMap.at(y).at(0) = Tile(TileType::WALL, wallColor);
-        this->worldMap.at(y).at(mapWidth - 1) = Tile(TileType::WALL, wallColor);
+        this->worldMap.at(y).at(0) = Tile(TileType::WALL, wallColor, "textures/greystone.png");
+        this->worldMap.at(y).at(mapWidth - 1) = Tile(TileType::WALL, wallColor, "textures/greystone.png");
     }
 
-    this->worldMap.at(mapHeight / 2).at(mapWidth / 2) = Tile(TileType::WALL, 0xFF0000FF);
+    this->worldMap.at(mapHeight / 2).at(mapWidth / 2) = Tile(TileType::WALL, 0xFF0000FF, "textures/bluestone.png");
 }
 
 vector<vector<Tile>>& Map::GetMap()
