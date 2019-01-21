@@ -14,3 +14,4 @@ This is a basic raycasting (i.e. Wolfenstein 3D) engine implemented in C++ using
 + Level editor
 
 ## Screenshots
+![Screenshot](raycast.png)
